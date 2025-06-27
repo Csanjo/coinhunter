@@ -16,12 +16,16 @@ class CoinHunter:
         self.width = len(self.map[0])
 
         self.game_over = False
+        self.state = 'title'
 
         window_height = self.scale * self.height
         window_width = self.scale * self.width
         self.window = pygame.display.set_mode((window_width, window_height))
         self.restart_button_rect = pygame.Rect(0, 0, 200, 60)
         self.restart_button_rect.center = (self.window.get_width()//2, self.window.get_height() * 3 // 4)
+        self.start_button_rect = pygame.Rect(0, 0, 200, 60)
+        self.start_button_rect.center = (self.window.get_width() // 2, self.window.get_height() * 3 // 4)
+
 
         pygame.display.set_caption("Coin Hunter")
 
@@ -32,7 +36,7 @@ class CoinHunter:
         self.gravity = 0.5
         self.ground_y = self.robot_y  # The "ground" position to land on after jump
 
-        self.last_coin_spawn_time = pygame.time.get_ticks()  # current time in milliseconds
+        self.last_coin_spawn_time = pygame.time.get_ticks() 
         self.coin_spawn_interval = 3000 
 
         # Monster
@@ -53,6 +57,9 @@ class CoinHunter:
 
         # Clock for frame timing
         self.clock = pygame.time.Clock()
+
+        self.font_title = pygame.font.SysFont(None, 80)
+        self.font_subtitle = pygame.font.SysFont(None, 36)
 
     def load_images(self):
         self.images = []
@@ -88,30 +95,35 @@ class CoinHunter:
                     self.map[y][x] = 0
 
     def run_frame(self):
-        # Process input/events
         self.check_events()
 
-        if not self.game_over:
-            self.update_robot()
-            self.update_monsters()
-            self.check_monster_robot_collision()
-            self.draw_window()
-        else:
+        if self.state == 'title':
+            self.draw_title_screen()
+        elif self.state == 'playing':
+            if not self.game_over:
+                self.update_robot()
+                self.update_monsters()
+                self.check_monster_robot_collision()
+                self.draw_window()
+            else:
+                self.state = 'game_over'
+                self.draw_game_over_screen()
+            
+            current_time = pygame.time.get_ticks()
+            if current_time - self.last_coin_spawn_time >= self.coin_spawn_interval:
+                self.spawn_coins(1)
+                self.last_coin_spawn_time = current_time
+
+            if not self.game_over:
+                self.survival_time = (current_time - self.start_time) // 1000 
+
+            if current_time - self.last_monster_spawn_time >= self.monster_spawn_interval:
+                self.spawn_monster()
+                self.last_monster_spawn_time = current_time
+
+        elif self.state == 'game_over':
             self.draw_game_over_screen()
 
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_coin_spawn_time >= self.coin_spawn_interval:
-            self.spawn_coins(1)
-            self.last_coin_spawn_time = current_time
-
-        if not self.game_over:
-            self.survival_time = (current_time - self.start_time) // 1000 
-
-        if current_time - self.last_monster_spawn_time >= self.monster_spawn_interval:
-            self.spawn_monster()
-            self.last_monster_spawn_time = current_time
-
-        # Cap framerate at 60 FPS
         self.clock.tick(60)
 
 
@@ -120,9 +132,29 @@ class CoinHunter:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+                if self.state == 'title' and self.start_button_rect.collidepoint(mouse_pos):
+                    self.state = 'playing'
+                    self.new_game()
+                    self.spawn_coins(3)
+                    self.start_time = pygame.time.get_ticks()
+                elif self.state == 'game_over' and self.restart_button_rect.collidepoint(mouse_pos):
+                    self.restart_game()
+                    self.state = 'playing'
+            elif event.type == pygame.KEYDOWN and self.state == 'title':
+                if event.key in (pygame.K_SPACE, pygame.K_RETURN):
+                    self.state = 'playing'
+                    self.new_game()
+                    self.spawn_coins(3)
+                    self.start_time = pygame.time.get_ticks()
             elif event.type == pygame.KEYDOWN:
-                if not self.game_over:
-                    # normal movement keys
+                if self.state == 'game_over':
+                    if event.key in (pygame.K_SPACE, pygame.K_RETURN):
+                        self.restart_game()
+                        self.state = 'playing'
+                elif not self.game_over:
                     if event.key == pygame.K_LEFT:
                         self.keys['left'] = True
                     elif event.key == pygame.K_RIGHT:
@@ -135,10 +167,6 @@ class CoinHunter:
                         self.keys['up'] = True
                     elif event.key == pygame.K_DOWN:
                         self.keys['down'] = True
-                else:
-                    # maybe restart on space key
-                    if event.key == pygame.K_SPACE:
-                        self.restart_game()
             elif event.type == pygame.KEYUP and not self.game_over:
                 if event.key == pygame.K_LEFT:
                     self.keys['left'] = False
@@ -172,8 +200,7 @@ class CoinHunter:
                 self.is_jumping = False
                 self.jump_velocity = 0
 
-        # Collision detection
-        # Check the 4 corners of the robot sprite at the new position
+     
         corners = [
             (new_x, new_y),
             (new_x + self.scale - 1, new_y),
@@ -189,10 +216,9 @@ class CoinHunter:
             if (
                 tile_x < 0 or tile_x >= self.width or
                 tile_y < 0 or tile_y >= self.height or
-                self.map[tile_y][tile_x] == 1  # wall tile
+                self.map[tile_y][tile_x] == 1  
             ):
-                # Collision detected, cancel movement horizontally and/or vertically
-                # For simplicity, stop all movement this frame:
+                
                 return
 
         # No collision detected, update position
@@ -256,10 +282,10 @@ class CoinHunter:
         attempts = 0
         while attempts < 100:
             x = random.randint(1, self.width - 2)
-            y = random.randint(3, self.height - 2)  # Only rows inside the arena
+            y = random.randint(3, self.height - 2)  
 
             if (
-                self.map[y][x] != 1 and  # not a wall
+                self.map[y][x] != 1 and  
                 (x, y) not in self.coins and
                 (x, y) != (int(self.robot_x // self.scale), int(self.robot_y // self.scale)) and
                 all((int(m['x'] // self.scale), int(m['y'] // self.scale)) != (x, y) for m in self.monsters)
@@ -322,11 +348,12 @@ class CoinHunter:
 
 
     def draw_game_over_screen(self):
-        self.window.fill((50, 50, 50))  # dark background
+        self.window.fill((50, 50, 50))  
 
         font_large = pygame.font.SysFont(None, 72)
         font_medium = pygame.font.SysFont(None, 48)
         font_small = pygame.font.SysFont(None, 36)
+
 
         # Game Over text
         text = font_large.render("Game Over", True, (255, 0, 0))
@@ -354,6 +381,51 @@ class CoinHunter:
         pygame.display.flip()
 
 
+    def draw_title_screen(self):
+        self.window.fill((0, 0, 0))
+        title_text = self.font_title.render("Coin Hunter", True, (255, 255, 0))
+        subtitle_text = self.font_subtitle.render("Press SPACE or ENTER to start", True, (255, 255, 255))
+
+        title_rect = title_text.get_rect(center=(self.window.get_width() // 2, self.window.get_height() // 3))
+        subtitle_rect = subtitle_text.get_rect(center=(self.window.get_width() // 2, self.window.get_height() // 2))
+
+        self.window.blit(title_text, title_rect)
+        self.window.blit(subtitle_text, subtitle_rect)
+
+        instructions = [
+            "Use LEFT and RIGHT arrows to move",
+            "Press SPACE to jump",
+            "Avoid monsters and collect coins",
+        ]
+
+        for i, line in enumerate(instructions):
+            instruction_text = self.font_subtitle.render(line, True, (255, 255, 255))
+            instruction_rect = instruction_text.get_rect(
+                center=(self.window.get_width() // 2, self.window.get_height() // 2 + 50 + i * 30)
+            )
+            self.window.blit(instruction_text, instruction_rect)
+
+        pygame.display.flip()
+
+    def start_game(self):
+        self.new_game()
+        self.spawn_coins(3)
+        self.game_over = False
+        self.monsters = [{
+            'x': 5 * self.scale,
+            'y': 6 * self.scale,
+            'vel_x': 3,
+            'vel_y': 3
+        }]
+        self.last_monster_spawn_time = pygame.time.get_ticks()
+        self.keys = {'left': False, 'right': False, 'up': False, 'down': False}
+        self.is_jumping = False
+        self.jump_velocity = 0
+        self.coins_collected = 0
+        self.start_time = pygame.time.get_ticks()
+        self.state = 'playing'
+
+
     def restart_game(self):
         self.new_game()
         self.spawn_coins(3)
@@ -372,7 +444,7 @@ class CoinHunter:
         self.start_time = pygame.time.get_ticks()
 
     def draw_window(self):
-        self.window.fill((173, 216, 230))  # background
+        self.window.fill((173, 216, 230))  
 
         # Draw walls and other tiles
         for y in range(self.height):
