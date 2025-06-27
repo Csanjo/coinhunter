@@ -63,9 +63,7 @@ class CoinHunter:
 
         # Mobile buttons
         
-        self.left_button_rect = pygame.Rect(10, self.window.get_height() - 80, 60, 60)
-        self.right_button_rect = pygame.Rect(80, self.window.get_height() - 80, 60, 60)
-        self.jump_button_rect = pygame.Rect(self.window.get_width() - 70, self.window.get_height() - 80, 60, 60)
+        
 
 
     def load_images(self):
@@ -184,24 +182,6 @@ class CoinHunter:
                 # Check if restart button clicked
                 if self.restart_button_rect.collidepoint(mouse_pos):
                     self.restart_game()
-
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                pos = event.pos
-                if self.left_button_rect.collidepoint(pos):
-                    self.keys['left'] = True
-                elif self.right_button_rect.collidepoint(pos):
-                    self.keys['right'] = True
-                elif self.jump_button_rect.collidepoint(pos):
-                    if not self.is_jumping:
-                        self.is_jumping = True
-                        self.jump_velocity = -self.jump_speed
-
-            if event.type == pygame.MOUSEBUTTONUP:
-                pos = event.pos
-                if self.left_button_rect.collidepoint(pos):
-                    self.keys['left'] = False
-                elif self.right_button_rect.collidepoint(pos):
-                    self.keys['right'] = False
 
     def update_robot(self):
         speed = 3
@@ -506,9 +486,7 @@ class CoinHunter:
         self.window.blit(time_text, (10, 40))
         
         # Draw buttons for mobile
-        pygame.draw.circle(self.window, (245, 245, 245), self.left_button_rect.center, 30)
-        pygame.draw.circle(self.window, (245, 245, 245), self.right_button_rect.center, 30)
-        pygame.draw.circle(self.window, (245, 245, 245), self.jump_button_rect.center, 40)
+        
 
         pygame.display.flip()
 
