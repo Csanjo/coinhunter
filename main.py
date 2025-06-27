@@ -24,7 +24,7 @@ class CoinHunter:
         self.restart_button_rect = pygame.Rect(0, 0, 200, 60)
         self.restart_button_rect.center = (self.window.get_width()//2, self.window.get_height() * 3 // 4)
         self.start_button_rect = pygame.Rect(0, 0, 200, 60)
-        self.start_button_rect.center = (self.window.get_width() // 2, self.window.get_height() * 3 // 4)
+        self.start_button_rect.center = (self.window.get_width() // 2, (self.window.get_height() * 3 // 4) + 50)
 
 
         pygame.display.set_caption("Coin Hunter")
@@ -60,6 +60,13 @@ class CoinHunter:
 
         self.font_title = pygame.font.SysFont(None, 80)
         self.font_subtitle = pygame.font.SysFont(None, 36)
+
+        # Mobile buttons
+        
+        self.left_button_rect = pygame.Rect(10, self.window.get_height() - 80, 60, 60)
+        self.right_button_rect = pygame.Rect(80, self.window.get_height() - 80, 60, 60)
+        self.jump_button_rect = pygame.Rect(self.window.get_width() - 70, self.window.get_height() - 80, 60, 60)
+
 
     def load_images(self):
         self.images = []
@@ -177,6 +184,24 @@ class CoinHunter:
                 # Check if restart button clicked
                 if self.restart_button_rect.collidepoint(mouse_pos):
                     self.restart_game()
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = event.pos
+                if self.left_button_rect.collidepoint(pos):
+                    self.keys['left'] = True
+                elif self.right_button_rect.collidepoint(pos):
+                    self.keys['right'] = True
+                elif self.jump_button_rect.collidepoint(pos):
+                    if not self.is_jumping:
+                        self.is_jumping = True
+                        self.jump_velocity = -self.jump_speed
+
+            if event.type == pygame.MOUSEBUTTONUP:
+                pos = event.pos
+                if self.left_button_rect.collidepoint(pos):
+                    self.keys['left'] = False
+                elif self.right_button_rect.collidepoint(pos):
+                    self.keys['right'] = False
 
     def update_robot(self):
         speed = 3
@@ -392,6 +417,12 @@ class CoinHunter:
         self.window.blit(title_text, title_rect)
         self.window.blit(subtitle_text, subtitle_rect)
 
+        # Draw start button rectangle
+        pygame.draw.rect(self.window, (0, 200, 0), self.start_button_rect)
+        button_text = self.font_subtitle.render("Start Game", True, (255, 255, 255))
+        button_text_rect = button_text.get_rect(center=self.start_button_rect.center)
+        self.window.blit(button_text, button_text_rect)
+
         instructions = [
             "Use LEFT and RIGHT arrows to move",
             "Press SPACE to jump",
@@ -406,6 +437,7 @@ class CoinHunter:
             self.window.blit(instruction_text, instruction_rect)
 
         pygame.display.flip()
+
 
     def start_game(self):
         self.new_game()
@@ -472,6 +504,11 @@ class CoinHunter:
         # Draw survival time
         time_text = self.font.render(f"Time: {self.survival_time}s", True, (50, 50, 50))
         self.window.blit(time_text, (10, 40))
+        
+        # Draw buttons for mobile
+        pygame.draw.circle(self.window, (245, 245, 245), self.left_button_rect.center, 30)
+        pygame.draw.circle(self.window, (245, 245, 245), self.right_button_rect.center, 30)
+        pygame.draw.circle(self.window, (245, 245, 245), self.jump_button_rect.center, 40)
 
         pygame.display.flip()
 
